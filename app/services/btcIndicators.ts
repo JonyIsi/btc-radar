@@ -1,5 +1,11 @@
-import axios from 'axios';
 
+/**
+ * 投资指标数据结构
+ * name: 指标名称
+ * value: 当前值
+ * threshold: 阈值
+ * description: 指标描述
+ */
 interface IndicatorData {
   name: string;
   value: number;
@@ -7,6 +13,10 @@ interface IndicatorData {
   description: string;
 }
 
+/**
+ * 获取比特币投资指标
+ * @returns 投资指标数据数组
+ */
 export async function fetchBtcIndicators(): Promise<IndicatorData[]> {
   try {
     // In a real app, these would be actual API calls
