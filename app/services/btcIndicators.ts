@@ -13,10 +13,6 @@ interface IndicatorData {
   description: string;
 }
 
-/**
- * 获取比特币投资指标
- * @returns 投资指标数据数组
- */
 export async function fetchBtcIndicators(): Promise<IndicatorData[]> {
   try {
     // In a real app, these would be actual API calls
