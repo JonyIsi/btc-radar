@@ -15,6 +15,7 @@ interface Indicator {
   description: string;
   minThreshold?: number;
   maxThreshold?: number;
+  sellThreshold?: number;
   formula?: string;
 }
 
@@ -22,39 +23,41 @@ interface Indicator {
  * 组件属性定义
  * indicators: 投资指标数组
  */
-interface InvestmentIndicatorsProps {
+interface SellIndicatorsProps {
   indicators: Indicator[];
 }
 
 /**
- * 投资指标展示组件
- * 根据指标数据展示当前是否适合定投
+ * 抛售指标展示组件
+ * 根据指标数据展示当前是否适合抛售
  * 并显示每个具体指标的详细信息
  */
-export default function InvestmentIndicators({ indicators }: InvestmentIndicatorsProps) {
-  // 计算指标总数和积极指标数量
+export default function SellIndicators({ indicators }: SellIndicatorsProps) {
+  // 计算指标总数和抛售指标数量（逻辑与定投相反）
   const totalIndicators = indicators.length;
-  const positiveIndicators = indicators.filter(ind => {
+  const sellIndicators = indicators.filter(ind => {
     if (ind.name === '一年+HODL波' || ind.name === '一年+Hold波') {
-      // 一年+HODL波：大于threshold才算命中
-      return ind.value > ind.threshold;
+      // 一年+HODL波：小于sellThreshold才算命中
+      return ind.value < (ind.sellThreshold ?? ind.threshold);
+
     }
+    const sellThreshold = ind.sellThreshold ?? ind.threshold;
     if (ind.minThreshold !== undefined && ind.maxThreshold !== undefined) {
-      return ind.value >= ind.minThreshold && ind.value <= ind.maxThreshold;
+      return ind.value < ind.minThreshold || ind.value > ind.maxThreshold;
     }
-    return ind.value <= ind.threshold;
+    return ind.value > sellThreshold;
   }).length;
-  const isGoodTime = positiveIndicators > totalIndicators / 2;
+  const isSellTime = sellIndicators > totalIndicators / 2;
 
   return (
     <div className="max-w-4xl mx-auto p-6">
       {/* 合并标题和结论 */}
-      <div className={`p-4 mb-6 rounded-lg ${isGoodTime ? 'bg-green-100' : 'bg-red-100'}`}>
+      <div className={`p-4 mb-6 rounded-lg ${isSellTime ? 'bg-green-100' : 'bg-red-100'}`}>
         <p className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-          {isGoodTime ? '适合定投' : '不适合定投'}
+          {isSellTime ? '考虑抛售' : '不适合抛售'}
         </p>
         <span className="text-base font-normal text-gray-700">
-            {positiveIndicators} / {totalIndicators} 个指标显示{isGoodTime ? '适合定投' : '不适合定投'}
+            {sellIndicators} / {totalIndicators} 个指标显示{isSellTime ? '应该抛售' : '不应抛售'}
         </span>
       </div>
 
@@ -66,12 +69,12 @@ export default function InvestmentIndicators({ indicators }: InvestmentIndicator
               <h3 className="font-semibold text-gray-900">{indicator.name}</h3>
               <span className={`px-2 py-1 rounded ${
                 (indicator.name === '一年+HODL波' || indicator.name === '一年+Hold波')
-                  ? (indicator.value > indicator.threshold
+                  ? (indicator.value < (indicator.sellThreshold ?? indicator.threshold)
                       ? 'bg-green-100 text-green-800'
                       : 'bg-red-100 text-red-800')
                   : (indicator.minThreshold !== undefined && indicator.maxThreshold !== undefined
-                      ? indicator.value >= indicator.minThreshold && indicator.value <= indicator.maxThreshold
-                      : indicator.value <= indicator.threshold)
+                      ? (indicator.value < indicator.minThreshold || indicator.value > indicator.maxThreshold)
+                      : indicator.value > (indicator.sellThreshold ?? indicator.threshold))
                     ? 'bg-green-100 text-green-800'
                     : 'bg-red-100 text-red-800'
               }`}>
@@ -87,7 +90,8 @@ export default function InvestmentIndicators({ indicators }: InvestmentIndicator
             <p className="text-xs text-gray-500 mt-1">
               {indicator.minThreshold !== undefined && indicator.maxThreshold !== undefined
                 ? `区间: ${indicator.minThreshold.toFixed(2)} ~ ${indicator.maxThreshold.toFixed(2)}`
-                : `阈值: ${indicator.threshold.toFixed(2)}`}
+                : `阈值: ${(indicator.sellThreshold ?? indicator.threshold).toFixed(2)}`
+              }
             </p>
           </div>
         ))}
