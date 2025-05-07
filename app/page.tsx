@@ -15,12 +15,12 @@ export default async function Home() {
             <BitcoinPrice />
           </div>
           <div className="flex-1">
-            <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="bg-white rounded-xl p-6">
               <InvestmentIndicators indicators={Periodindicators} />
             </div>
           </div>
           <div className="flex-1">
-            <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="bg-white rounded-xl p-6">
               <SellIndicators indicators={Periodindicators} />
             </div>
           </div>

@@ -51,7 +51,7 @@ export default function BitcoinPrice() {
   };
 
   return (
-    <div className="mb-8 p-6 bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+    <div className="mb-8 p-6 bg-white rounded-lg">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-gray-800">BTC 实时价格</h2>
         <button 

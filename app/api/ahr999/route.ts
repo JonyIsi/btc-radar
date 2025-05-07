@@ -8,7 +8,7 @@ export async function GET() {
         'apikey': process.env.COINANK_API_KEY
       }
     });
-    // 适配前端字段
+
     return NextResponse.json({
       data: {
         cnnValueList: response.data.data.ahr999,
