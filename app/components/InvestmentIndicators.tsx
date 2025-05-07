@@ -1,5 +1,5 @@
 'use client';  // 这是前台的工作（在用户浏览器中运行）
-import React from 'react';  // 借用React工具来做界面
+import React, { useState } from 'react';  // 借用React工具来做界面
 
 /**
  * 投资指标数据结构
@@ -32,9 +32,25 @@ interface InvestmentIndicatorsProps {
  * 并显示每个具体指标的详细信息
  */
 export default function InvestmentIndicators({ indicators }: InvestmentIndicatorsProps) {
+  const [sortedIndicators, setSortedIndicators] = useState(() => {
+    // 从本地存储读取排序
+    const savedOrder = localStorage.getItem('investmentIndicatorsOrder');
+    if (savedOrder) {
+      const order = JSON.parse(savedOrder);
+      // 根据保存的顺序重新排序指标
+      return [...indicators].sort((a, b) => {
+        const indexA = order.indexOf(a.name);
+        const indexB = order.indexOf(b.name);
+        return indexA - indexB;
+      });
+    }
+    return indicators;
+  });
+  const [draggedItem, setDraggedItem] = useState<number | null>(null);
+
   // 计算指标总数和积极指标数量
-  const totalIndicators = indicators.length;
-  const positiveIndicators = indicators.filter(ind => {
+  const totalIndicators = sortedIndicators.length;
+  const positiveIndicators = sortedIndicators.filter(ind => {
     if (ind.name === '一年+HODL波' || ind.name === '一年+Hold波') {
       // 一年+HODL波：大于threshold才算命中
       return ind.value > ind.threshold;
@@ -45,6 +61,29 @@ export default function InvestmentIndicators({ indicators }: InvestmentIndicator
     return ind.value <= ind.threshold;
   }).length;
   const isGoodTime = positiveIndicators > totalIndicators / 2;
+
+  const handleDragStart = (index: number) => {
+    setDraggedItem(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (targetIndex: number) => {
+    if (draggedItem === null) return;
+    
+    const newIndicators = [...sortedIndicators];
+    const [draggedIndicator] = newIndicators.splice(draggedItem, 1);
+    newIndicators.splice(targetIndex, 0, draggedIndicator);
+    
+    setSortedIndicators(newIndicators);
+    // 保存新的排序到本地存储
+    localStorage.setItem('investmentIndicatorsOrder', 
+      JSON.stringify(newIndicators.map(ind => ind.name))
+    );
+    setDraggedItem(null);
+  };
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -60,8 +99,15 @@ export default function InvestmentIndicators({ indicators }: InvestmentIndicator
 
       {/* 具体指标列表区域 */}
       <div className="grid gap-4">
-        {indicators.map((indicator, index) => (
-          <div key={index} className="p-4 border rounded-lg bg-white shadow-sm">
+        {sortedIndicators.map((indicator, index) => (
+          <div 
+            key={index} 
+            className="p-4 border rounded-lg bg-white shadow-sm cursor-move"
+            draggable
+            onDragStart={() => handleDragStart(index)}
+            onDragOver={handleDragOver}
+            onDrop={() => handleDrop(index)}
+          >
             <div className="flex justify-between items-center mb-2">
               <h3 className="font-semibold text-gray-900">{indicator.name}</h3>
               <span className={`px-2 py-1 rounded ${
