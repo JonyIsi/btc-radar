@@ -18,6 +18,45 @@ interface PeriodIndicatorData {
   formula?: string;
 }
 
+interface ApiResponse {
+  data: {
+    cnnValueList?: number[];
+    puellMultiplList?: number[];
+    marketCapRateList?: number[];
+    nuplList?: number[];
+    zscoreList?: number[];
+    oneyearHoldwaveList?: number[];
+    rhodlList?: number[];
+    value4?: number[];
+    value5?: number[];
+    timeList?: number[];
+  };
+}
+
+interface CoinGeckoResponse {
+  bitcoin: {
+    usd: number;
+  };
+}
+
+async function fetchWithRetry<T>(url: string, options: RequestInit = {}, retries = 3): Promise<T> {
+  try {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    if (retries > 0) {
+      console.log(`Retrying... ${retries} attempts left`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return fetchWithRetry(url, options, retries - 1);
+    }
+    throw error;
+  }
+}
+
 export async function fetchPeriodIndicators(): Promise<PeriodIndicatorData[]> {
   try {
     // 服务器端 fetch 需要绝对路径
@@ -26,68 +65,57 @@ export async function fetchPeriodIndicators(): Promise<PeriodIndicatorData[]> {
       : 'http://localhost:3000';
 
     // 获取恐惧贪婪指数
-    const fearGreedResponse = await fetch(`${baseUrl}/api/greed-fear`);
-    const fearGreedData = await fearGreedResponse.json();
+    const fearGreedData = await fetchWithRetry<ApiResponse>(`${baseUrl}/api/greed-fear`);
     const fearGreedValue = fearGreedData.data?.cnnValueList?.[fearGreedData.data.cnnValueList.length - 1] || 20;
 
     // 获取AHR999真实数据
-    const ahr999Response = await fetch(`${baseUrl}/api/ahr999`);
-    const ahr999Data = await ahr999Response.json();
+    const ahr999Data = await fetchWithRetry<ApiResponse>(`${baseUrl}/api/ahr999`);
     const ahr999List = ahr999Data.data?.cnnValueList;
     const ahr999Value = ahr999List?.[ahr999List.length - 1] ?? 0.0;
 
     // 获取Puell Multiple真实数据
-    const puellResponse = await fetch(`${baseUrl}/api/puell-multiple`);
-    const puellData = await puellResponse.json();
+    const puellData = await fetchWithRetry<ApiResponse>(`${baseUrl}/api/puell-multiple`);
     const puellList = puellData.data?.puellMultiplList;
     const puellValue = puellList?.[puellList.length - 1] ?? 0.0;
 
     // 获取BTC市场市占率 
-    const marketCapRateResponse = await fetch(`${baseUrl}/api/btc-marketcaprate`);
-    const marketCapRateData = await marketCapRateResponse.json();
+    const marketCapRateData = await fetchWithRetry<ApiResponse>(`${baseUrl}/api/btc-marketcaprate`);
     const marketCapRateList = marketCapRateData.data?.marketCapRateList;
     const marketCapRateValue = marketCapRateList?.[marketCapRateList.length - 1] ?? 0.0;
 
     // 获取NUPL数据
-    const nuplResponse = await fetch(`${baseUrl}/api/nupl`);
-    const nuplData = await nuplResponse.json();
+    const nuplData = await fetchWithRetry<ApiResponse>(`${baseUrl}/api/nupl`);
     const nuplList = nuplData.data?.nuplList;
     const nuplValue = nuplList?.[nuplList.length - 1] ?? 0.0;
 
     // 获取MVRV Z-Score
-    const mvrvResponse = await fetch(`${baseUrl}/api/mvrv-zscore`);
-    const mvrvData = await mvrvResponse.json();
+    const mvrvData = await fetchWithRetry<ApiResponse>(`${baseUrl}/api/mvrv-zscore`);
     const zscoreList = mvrvData.data?.zscoreList; 
     const zscoreValue = zscoreList?.[zscoreList.length - 1] ?? 0.0;
 
-
     // 获取一年+Hold波
-    const oneyearHoldwaveResponse = await fetch(`${baseUrl}/api/oneyear-holdwave`);
-    const oneyearHoldwaveData = await oneyearHoldwaveResponse.json();
+    const oneyearHoldwaveData = await fetchWithRetry<ApiResponse>(`${baseUrl}/api/oneyear-holdwave`);
     const oneyearHoldwaveList = oneyearHoldwaveData.data?.oneyearHoldwaveList;
     const oneyearHoldwaveValue = oneyearHoldwaveList?.[oneyearHoldwaveList.length - 1] ?? 0.0;
 
     // 获取RHODL 比率
-    const rhodlResponse = await fetch(`${baseUrl}/api/rhodl-ratio`);
-    const rhodlData = await rhodlResponse.json();
+    const rhodlData = await fetchWithRetry<ApiResponse>(`${baseUrl}/api/rhodl-ratio`);
     const rhodlList = rhodlData.data?.rhodlList;
     const rhodlValue = rhodlList?.[rhodlList.length - 1] ?? 0.0;
 
     // 获取彩虹图V2
-    const rainbowResponse = await fetch(`${baseUrl}/api/rainbow-v2`);
-    const rainbowData = await rainbowResponse.json();
+    const rainbowData = await fetchWithRetry<ApiResponse>(`${baseUrl}/api/rainbow-v2`);
     const value4 = rainbowData.data?.value4;
     const value5 = rainbowData.data?.value5;
     const timeList = rainbowData.data?.timeList;
     
     // 查找今天的数据索引
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // 设置为今天的0点
+    today.setHours(0, 0, 0, 0);
     const todayTimestamp = today.getTime();
     
     let todayIndex = -1;
     if (timeList && timeList.length > 0) {
-      // 查找今天或最近的日期
       for (let i = timeList.length - 1; i >= 0; i--) {
         if (timeList[i] <= todayTimestamp) {
           todayIndex = i;
@@ -96,13 +124,11 @@ export async function fetchPeriodIndicators(): Promise<PeriodIndicatorData[]> {
       }
     }
     
-    // 如果找到今天的索引，使用对应的value4值，否则使用最后一个值
     const value4Today = todayIndex !== -1 && value4 ? value4[todayIndex] : (value4?.[value4?.length - 1] ?? 0);
     const value5Today = todayIndex !== -1 && value5 ? value5[todayIndex] : (value5?.[value5?.length - 1] ?? 0);
     
     // 获取BTC价格
-    const btcPriceResponse = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
-    const btcPriceData = await btcPriceResponse.json();
+    const btcPriceData = await fetchWithRetry<CoinGeckoResponse>('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
     const btcPrice = btcPriceData.bitcoin?.usd ?? 0.0;
 
     return [
@@ -181,6 +207,16 @@ export async function fetchPeriodIndicators(): Promise<PeriodIndicatorData[]> {
     ];
   } catch (error) {
     console.error('Error fetching BTC indicators:', error);
-    throw error;
+    // 返回默认值而不是抛出错误
+    return [
+      {
+        name: 'AHR999指数',
+        value: 0,
+        threshold: 1.2,
+        sellThreshold: 1.2,
+        description: '数据获取失败',
+      },
+      // ... 其他指标的默认值
+    ];
   }
 } 
